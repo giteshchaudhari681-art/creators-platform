@@ -1,5 +1,5 @@
 import { useAuth } from '../context/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 
 const Dashboard = () => {
   const { user, logout, loading } = useAuth();
@@ -20,9 +20,18 @@ const Dashboard = () => {
     <div style={containerStyle}>
       <div style={headerStyle}>
         <h1>Welcome, {user.name}!</h1>
-        <button onClick={logout} style={logoutButtonStyle}>
-          Logout
-        </button>
+
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <Link to="/create">
+            <button style={createButtonStyle}>
+              + Create New Post
+            </button>
+          </Link>
+
+          <button onClick={logout} style={logoutButtonStyle}>
+            Logout
+          </button>
+        </div>
       </div>
 
       <div style={contentStyle}>
@@ -71,6 +80,16 @@ const headerStyle = {
 const logoutButtonStyle = {
   padding: '0.5rem 1.5rem',
   backgroundColor: '#dc3545',
+  color: 'white',
+  border: 'none',
+  borderRadius: '5px',
+  cursor: 'pointer',
+  fontWeight: '500',
+};
+
+const createButtonStyle = {
+  padding: '0.5rem 1.5rem',
+  backgroundColor: '#007bff',
   color: 'white',
   border: 'none',
   borderRadius: '5px',
