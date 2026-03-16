@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -65,20 +66,14 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password
-        })
+      const response = await api.post('/api/auth/login', {
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password
       });
+      
+      const data = response.data;
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (response.status === 200) {
         login(data.user, data.token);
         
         setFormData({ email: '', password: '' });
