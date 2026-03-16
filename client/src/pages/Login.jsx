@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
@@ -13,6 +13,7 @@ const Login = () => {
   const [apiError, setApiError] = useState('');
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   const handleChange = (e) => {
@@ -82,7 +83,8 @@ const Login = () => {
         
         setFormData({ email: '', password: '' });
         
-        navigate('/dashboard');
+        const from = location.state?.from?.pathname || '/dashboard';
+        navigate(from, { replace: true });
 
       } else {
         setApiError(data.message || 'Login failed. Please try again.');
