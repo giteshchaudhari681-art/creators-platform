@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import api from '../services/api';
-import { toast } from 'react-toastify';
 import socket from '../services/socket';
+import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const { user, logout, loading } = useAuth();
@@ -16,28 +16,33 @@ const Dashboard = () => {
 
   useEffect(() => {
 
-  socket.connect();
+    socket.connect();
 
-  socket.on('connect', () => {
-    console.log('🔌 Socket connected:', socket.id);
-  });
+    socket.on('connect', () => {
+      console.log('🔌 Socket connected:', socket.id);
+    });
 
-  socket.on('disconnect', (reason) => {
-    console.log('❌ Socket disconnected:', reason);
-  });
+    socket.on('disconnect', (reason) => {
+      console.log('❌ Socket disconnected:', reason);
+    });
 
-  socket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error.message);
-  });
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error.message);
+    });
 
-  return () => {
-    socket.off('connect');
-    socket.off('disconnect');
-    socket.off('connect_error');
-    socket.disconnect();
-  };
+    socket.on('newPost', (data) => {
+      toast.success(data.message);
+    });
 
-}, []);
+    return () => {
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
+      socket.off('newPost');
+      socket.disconnect();
+    };
+
+  }, []);
 
   useEffect(() => {
     fetchPosts(currentPage);
@@ -53,17 +58,21 @@ const Dashboard = () => {
       setPagination(response.data.pagination);
 
     } catch (error) {
+
       const message =
         error.response?.data?.message ||
-        'Failed to load posts.';
+        'Failed to load posts';
+
       toast.error(message);
       setError(message);
+
     } finally {
       setIsLoadingPosts(false);
     }
   };
 
   const handleDelete = async (postId) => {
+
     const confirmed = window.confirm(
       'Are you sure you want to delete this post?'
     );
@@ -71,9 +80,11 @@ const Dashboard = () => {
     if (!confirmed) return;
 
     try {
+
       const response = await api.delete(`/api/posts/${postId}`);
 
       if (response.data.success) {
+
         setPosts(posts.filter((post) => post._id !== postId));
 
         setPagination((prev) => ({
@@ -82,14 +93,18 @@ const Dashboard = () => {
         }));
 
         toast.success('Post deleted successfully');
+
       }
 
     } catch (error) {
+
       const message =
         error.response?.data?.message ||
-        'Failed to delete post.';
+        'Failed to delete post';
+
       toast.error(message);
       setError(message);
+
     }
   };
 
@@ -111,11 +126,12 @@ const Dashboard = () => {
 
   return (
     <div style={containerStyle}>
-      
+
       <div style={headerStyle}>
         <h1>Welcome, {user.name}!</h1>
 
         <div style={{ display: 'flex', gap: '1rem' }}>
+
           <Link to="/create">
             <button style={createButtonStyle}>
               + Create New Post
@@ -125,6 +141,7 @@ const Dashboard = () => {
           <button onClick={logout} style={logoutButtonStyle}>
             Logout
           </button>
+
         </div>
       </div>
 
@@ -134,7 +151,7 @@ const Dashboard = () => {
         <div style={loadingPostsStyle}>Loading posts...</div>
       ) : (
         <div style={postsContainerStyle}>
-          
+
           {posts.length === 0 ? (
             <div style={emptyStateStyle}>
               <p>You haven't created any posts yet.</p>
@@ -144,7 +161,7 @@ const Dashboard = () => {
             <>
               {posts.map((post) => (
                 <div key={post._id} style={postCardStyle}>
-                  
+
                   <h3>{post.title}</h3>
 
                   <p style={contentPreviewStyle}>
@@ -160,7 +177,7 @@ const Dashboard = () => {
                   </div>
 
                   <div style={actionsStyle}>
-                    
+
                     <Link to={`/edit/${post._id}`}>
                       <button style={editButtonStyle}>
                         Edit
@@ -204,6 +221,7 @@ const Dashboard = () => {
               </div>
             </>
           )}
+
         </div>
       )}
     </div>
