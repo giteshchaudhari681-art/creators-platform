@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { toast } from 'react-toastify';
 
 const CreatePost = () => {
   const [formData, setFormData] = useState({
@@ -30,10 +31,15 @@ const CreatePost = () => {
       const response = await api.post('/api/posts', formData);
 
       if (response.data.success) {
+        toast.success('Post created successfully!');
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create post');
+      const message =
+        err.response?.data?.message ||
+        'Failed to create post';
+      
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

@@ -3,7 +3,7 @@ import Post from '../models/Post.js';
 // @desc    Create new post
 // @route   POST /api/posts
 // @access  Private
-export const createPost = async (req, res) => {
+export const createPost = async (req, res, next) => {
   try {
     const { title, content, category, status } = req.body;
 
@@ -29,12 +29,7 @@ export const createPost = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Create post error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error creating post',
-      error: error.message
-    });
+    next(error);
   }
 };
 

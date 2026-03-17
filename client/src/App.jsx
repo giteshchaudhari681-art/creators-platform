@@ -10,6 +10,8 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import PublicRoute from './components/common/PublicRoute';
 import CreatePost from './pages/CreatePost';
 import EditPost from './pages/EditPost';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
@@ -66,6 +68,11 @@ function App() {
           </main>
 
           <Footer />
+
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+          />
         </div>
       </AuthProvider>
     </BrowserRouter>

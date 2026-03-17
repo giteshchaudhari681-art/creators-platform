@@ -5,6 +5,7 @@ import connectDB from './config/database.js';
 import userRoutes from './routes/userRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import postRoutes from './routes/postRoutes.js';
+import errorHandler from './middleware/errorMiddleware.js';
 
 dotenv.config();
 connectDB();
@@ -31,6 +32,8 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date()
   });
 });
+
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);

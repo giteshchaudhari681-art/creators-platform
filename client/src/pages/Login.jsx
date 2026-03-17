@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { toast } from 'react-toastify';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -74,6 +75,9 @@ const Login = () => {
       const data = response.data;
 
       if (response.status === 200) {
+        
+        toast.success('Login successful!');
+
         login(data.user, data.token);
         
         setFormData({ email: '', password: '' });
@@ -86,8 +90,11 @@ const Login = () => {
       }
 
     } catch (error) {
-      console.error('Login error:', error);
-      setApiError('Unable to connect to server. Please try again.');
+      const message =
+        error.response?.data?.message ||
+        'Unable to connect to the server. Please try again.';
+      toast.error(message);
+      setApiError(message);
     } finally {
       setIsLoading(false);
     }
