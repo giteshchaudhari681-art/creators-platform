@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { toast } from 'react-toastify';
+import socket from '../services/socket';
 
 const Dashboard = () => {
   const { user, logout, loading } = useAuth();
@@ -12,6 +13,31 @@ const Dashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+
+  socket.connect();
+
+  socket.on('connect', () => {
+    console.log('🔌 Socket connected:', socket.id);
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log('❌ Socket disconnected:', reason);
+  });
+
+  socket.on('connect_error', (error) => {
+    console.error('Socket connection error:', error.message);
+  });
+
+  return () => {
+    socket.off('connect');
+    socket.off('disconnect');
+    socket.off('connect_error');
+    socket.disconnect();
+  };
+
+}, []);
 
   useEffect(() => {
     fetchPosts(currentPage);
