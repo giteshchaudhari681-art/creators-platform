@@ -1,5 +1,5 @@
+import './config/env.js';
 import express from 'express';
-import dotenv from 'dotenv';
 import cors from 'cors';
 import connectDB from './config/database.js';
 import userRoutes from './routes/userRoutes.js';
@@ -9,9 +9,9 @@ import errorHandler from './middleware/errorMiddleware.js';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
+import uploadRoutes from './routes/upload.js';
 
 
-dotenv.config();
 connectDB();
 
 const app = express();
@@ -25,37 +25,34 @@ const io = new Server(httpServer, {
 });
 
 io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
 
-  const token = socket.handshake.auth.token;
+  console.log('--- SOCKET DEBUG START ---');
+  console.log('TOKEN:', token);
 
   if (!token) {
-    return next(new Error('Authentication error: No token provided'));
+    console.log('❌ NO TOKEN RECEIVED');
+    return next(new Error('No token'));
   }
 
   try {
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    console.log('✅ DECODED TOKEN:', decoded);
 
     socket.data.user = decoded;
 
     next();
-
   } catch (error) {
-
-    next(new Error('Authentication error'));
-
+    console.log('❌ JWT ERROR:', error.message);
+    next(new Error('Auth error'));
   }
-
 });
 
 io.on('connection', (socket) => {
-
-  console.log(`✅ User connected: ${socket.id} | User: ${socket.data.user.email}`);
-
-  socket.on('disconnect', (reason) => {
-    console.log(`❌ User disconnected: ${socket.id} (${reason})`);
-  });
-
+  console.log(
+    `✅ User connected: ${socket.id} | User: ${socket.data.user?.email}`
+  );
 });
 
 const PORT = process.env.PORT || 5000;
@@ -71,6 +68,7 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes(io));
+app.use('/api/upload', uploadRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

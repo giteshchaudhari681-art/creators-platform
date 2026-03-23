@@ -15,7 +15,6 @@ const Dashboard = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-
     socket.connect();
 
     socket.on('connect', () => {
