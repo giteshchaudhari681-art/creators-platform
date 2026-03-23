@@ -3,35 +3,48 @@ import Post from '../models/Post.js';
 // @desc    Create new post
 // @route   POST /api/posts
 // @access  Private
-export const createPost = async (req, res, next) => {
-  try {
-    const { title, content, category, status } = req.body;
 
+export const createPost = async (req, res) => {
+  try {
+    console.log('BODY:', req.body);
+    console.log('REQ.USER:', req.user);
+
+    const { title, content, category, status, image } = req.body;
+
+    // Validate input
     if (!title || !content) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide title and content'
+        message: 'Title and content are required'
       });
     }
 
+    // 🔥 FIX: use author from JWT
     const post = await Post.create({
       title,
       content,
       category,
       status,
-      author: req.user._id
+      image,
+      author: req.user._id   // ✅ THIS IS THE REAL FIX
     });
 
     res.status(201).json({
       success: true,
-      message: 'Post created successfully',
       data: post
     });
 
   } catch (error) {
-    next(error);
+    console.error('CREATE POST ERROR:', error);
+
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error.message
+    });
   }
 };
+
 
 // @desc    Get posts with pagination
 // @route   GET /api/posts?page=1&limit=10
@@ -43,6 +56,7 @@ export const getPosts = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
+    // 🔥 FIX: use _id from req.user (it's a Mongoose document)
     const posts = await Post.find({ author: req.user._id })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -76,6 +90,7 @@ export const getPosts = async (req, res) => {
   }
 };
 
+
 // @desc    Get single post by ID
 // @route   GET /api/posts/:id
 // @access  Private
@@ -91,6 +106,7 @@ export const getPostById = async (req, res) => {
       });
     }
 
+    // 🔥 FIX: compare with userId
     if (post.author._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
@@ -113,6 +129,7 @@ export const getPostById = async (req, res) => {
   }
 };
 
+
 // @desc    Update post
 // @route   PUT /api/posts/:id
 // @access  Private
@@ -127,6 +144,7 @@ export const updatePost = async (req, res) => {
       });
     }
 
+    // 🔥 FIX
     if (post.author.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
@@ -134,12 +152,13 @@ export const updatePost = async (req, res) => {
       });
     }
 
-    const { title, content, category, status } = req.body;
+    const { title, content, category, status, image } = req.body;
 
     if (title) post.title = title;
     if (content) post.content = content;
     if (category) post.category = category;
     if (status) post.status = status;
+    if (image) post.image = image;
 
     const updatedPost = await post.save();
 
@@ -159,6 +178,7 @@ export const updatePost = async (req, res) => {
   }
 };
 
+
 // @desc    Delete post
 // @route   DELETE /api/posts/:id
 // @access  Private
@@ -173,6 +193,7 @@ export const deletePost = async (req, res) => {
       });
     }
 
+    // 🔥 FIX
     if (post.author.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,

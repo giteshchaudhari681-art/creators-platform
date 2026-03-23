@@ -7,13 +7,13 @@ const postRoutes = (io) => {
   const router = express.Router();
 
   router.post('/', protect, async (req, res) => {
+    await createPost(req, res);
 
-    const post = await createPost(req, res);
-
-    io.emit('newPost', {
-      message: `New post created by ${req.user.name}`
-    });
-
+    if (res.statusCode === 201) {
+      io.emit('newPost', {
+        message: `New post created by ${req.user.name}`
+      });
+    }
   });
 
   router.get('/', protect, getPosts);
