@@ -9,12 +9,13 @@ const CreatePost = () => {
     title: '',
     content: '',
     category: 'Technology',
-    status: 'draft',
-    image: 'image-placeholder' // ✅ NEW DEFAULT IMAGE
+    status: 'draft'
   });
 
-  const [imageUrl, setImageUrl] = useState(''); // ✅ NEW
-  const [isLoading, setIsLoading] = useState(false);
+  const [coverImageUrl, setCoverImageUrl] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
@@ -26,63 +27,77 @@ const CreatePost = () => {
     });
   };
 
-  // ✅ FIXED UPLOAD HANDLER
   const handleUpload = async (formData) => {
+    setUploading(true);
+    setUploadError('');
+
     try {
-      const token = localStorage.getItem('token');
+      const response = await api.post('/api/upload', formData);
 
-      const response = await fetch('http://localhost:5000/api/upload', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-
-      console.log('UPLOAD RESPONSE:', data);
-
-      if (data.success) {
-        setImageUrl(data.url); // ✅ STORE IMAGE URL
-        toast.success('Image uploaded successfully');
-      } else {
-        toast.error('Upload failed');
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Upload failed');
       }
 
+      setCoverImageUrl(response.data.url);
+      toast.success('Image uploaded successfully!');
+      return response.data.url;
+
     } catch (error) {
-      console.error('Upload failed:', error);
-      toast.error('Upload error');
+      const message = error.response?.data?.message || error.message || 'Image upload failed';
+      setUploadError(message);
+      toast.error(message);
+      return null;
+
+    } finally {
+      setUploading(false);
     }
   };
 
-  // ✅ FIXED SUBMIT (NOW INCLUDES IMAGE)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
+
+    if (!formData.title.trim() || !formData.content.trim()) {
+      setError('Title and content are required.');
+      toast.error('Title and content are required.');
+      return;
+    }
+
+    setSubmitting(true);
 
     try {
-      const response = await api.post('/api/posts', {
-        ...formData,
-        image: imageUrl // ✅ ADD IMAGE HERE
-      });
+      const postData = {
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        category: formData.category,
+        status: formData.status,
+        coverImage: coverImageUrl || null
+      };
+
+      const response = await api.post('/api/posts', postData);
 
       if (response.data.success) {
         toast.success('Post created successfully!');
+
+        setFormData({
+          title: '',
+          content: '',
+          category: 'Technology',
+          status: 'draft'
+        });
+        setCoverImageUrl(null);
+        setUploadError('');
+
         navigate('/dashboard');
       }
 
     } catch (err) {
-      const message =
-        err.response?.data?.message ||
-        'Failed to create post';
-
-      toast.error(message);
+      const message = err.response?.data?.message || 'Failed to create post';
       setError(message);
+      toast.error(message);
 
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -91,21 +106,24 @@ const CreatePost = () => {
       <h1>Create New Post</h1>
 
       {/* ✅ IMAGE UPLOAD COMPONENT */}
-      <ImageUpload onUpload={handleUpload} />
+      <ImageUpload onUpload={handleUpload} uploading={uploading} />
+
+      {uploading && <p>Uploading image, please wait...</p>}
+      {uploadError && <p style={{ color: 'red' }}>{uploadError}</p>}
 
       {/* ✅ SHOW IMAGE PREVIEW AFTER UPLOAD */}
-      {imageUrl && (
+      {coverImageUrl && (
         <div style={{ marginTop: '1rem' }}>
           <p>Uploaded Image:</p>
           <img
-            src={imageUrl}
-            alt="uploaded"
+            src={coverImageUrl}
+            alt="Cover image preview"
             style={{ width: '200px', borderRadius: '8px' }}
           />
         </div>
       )}
 
-      {error && <div>{error}</div>}
+      {error && <div style={{ color: 'red' }}>{error}</div>}
 
       <form onSubmit={handleSubmit}>
         <input
@@ -146,8 +164,8 @@ const CreatePost = () => {
           <option value="published">Published</option>
         </select>
 
-        <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Creating...' : 'Create Post'}
+        <button type="submit" disabled={submitting || uploading}>
+          {submitting ? 'Creating...' : 'Create Post'}
         </button>
       </form>
     </div>

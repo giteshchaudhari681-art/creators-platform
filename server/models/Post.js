@@ -28,7 +28,7 @@ const postSchema = new mongoose.Schema(
       enum: ['draft', 'published'],
       default: 'draft'
     },
-    image: {
+    coverImage: {
       type: String,
       default: null
     }

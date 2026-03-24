@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const ImageUpload = ({ onUpload }) => {
+const ImageUpload = ({ onUpload, uploading }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [error, setError] = useState('');
@@ -96,9 +96,9 @@ const ImageUpload = ({ onUpload }) => {
 
       <button
         type="submit"
-        disabled={!selectedFile || !!error}
+        disabled={!selectedFile || !!error || uploading}
       >
-        Upload Image
+        {uploading ? 'Uploading...' : 'Upload Image'}
       </button>
     </form>
   );

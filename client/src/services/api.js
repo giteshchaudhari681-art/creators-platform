@@ -3,11 +3,18 @@ import axios from 'axios';
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  timeout: 10000
 });
+
+// Optionally apply JSON content type only when not FormData
+api.interceptors.request.use((config) => {
+  if (config.data && !(config.data instanceof FormData)) {
+    config.headers['Content-Type'] = 'application/json';
+  } else {
+    delete config.headers['Content-Type'];
+  }
+  return config;
+}, (error) => Promise.reject(error));
 
 // Request interceptor
 api.interceptors.request.use(

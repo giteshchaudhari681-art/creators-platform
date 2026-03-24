@@ -242,8 +242,8 @@ const Dashboard = () => {
                         </span>
                       </div>
                     </div>
-                    {post.image && (
-                      <img src={post.image} alt={post.title} style={postImageStyle} />
+                    {post.coverImage && (
+                      <img src={post.coverImage} alt={`Cover image for ${post.title}`} style={postImageStyle} />
                     )}
                   </div>
 

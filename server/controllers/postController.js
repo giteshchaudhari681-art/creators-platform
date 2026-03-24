@@ -9,7 +9,7 @@ export const createPost = async (req, res) => {
     console.log('BODY:', req.body);
     console.log('REQ.USER:', req.user);
 
-    const { title, content, category, status, image } = req.body;
+    const { title, content, category, status, coverImage } = req.body;
 
     // Validate input
     if (!title || !content) {
@@ -25,7 +25,7 @@ export const createPost = async (req, res) => {
       content,
       category,
       status,
-      image,
+      coverImage: coverImage || null,
       author: req.user._id   // ✅ THIS IS THE REAL FIX
     });
 
@@ -152,13 +152,13 @@ export const updatePost = async (req, res) => {
       });
     }
 
-    const { title, content, category, status, image } = req.body;
+    const { title, content, category, status, coverImage } = req.body;
 
     if (title) post.title = title;
     if (content) post.content = content;
     if (category) post.category = category;
     if (status) post.status = status;
-    if (image) post.image = image;
+    if (coverImage) post.coverImage = coverImage;
 
     const updatedPost = await post.save();
 
