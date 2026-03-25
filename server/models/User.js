@@ -33,9 +33,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Ensure index and unique constraints exist from schema definition
-userSchema.index({ email: 1 }, { unique: true });
-
+// User model
 const User = mongoose.model('User', userSchema);
 
 export default User;
