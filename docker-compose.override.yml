@@ -1,0 +1,32 @@
+# Development overrides for docker-compose.yml
+# This file is automatically loaded by docker-compose and extends the main configuration
+# Use this for development-specific settings that shouldn't be in production
+# Reference: https://docs.docker.com/compose/extends/
+
+services:
+  # Development server with hot reloading and debugging
+  server:
+    environment:
+      NODE_ENV: development
+      DEBUG: creators-platform:*
+    volumes:
+      # Mount source code for hot reloading
+      - ./server:/app
+      - /app/node_modules
+    # Enable debugging port for Node.js Inspector
+    ports:
+      - "9229:9229"  # Node.js debugger port (chrome://inspect)
+
+  # Development client with hot reloading
+  client:
+    environment:
+      NODE_ENV: development
+    volumes:
+      # Mount source code for hot reloading
+      - ./client:/app
+      - /app/node_modules
+
+  # MongoDB with additional development tools
+  mongo:
+    ports:
+      - "27017:27017"
