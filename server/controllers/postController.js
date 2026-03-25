@@ -51,19 +51,30 @@ export const createPost = async (req, res) => {
 // @access  Private
 export const getPosts = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
 
     const skip = (page - 1) * limit;
 
-    // 🔥 FIX: use _id from req.user (it's a Mongoose document)
-    const posts = await Post.find({ author: req.user._id })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('author', 'name email');
+    // Optional explain output for debug-driven index verification
+    if (process.env.NODE_ENV === 'development' && req.query.explain === '1') {
+      const explainResult = await Post.find({ author: req.user._id })
+        .sort({ createdAt: -1 })
+        .limit(1)
+        .explain('executionStats');
+      console.log('🧾 Post query explain:', explainResult);
+    }
 
-    const total = await Post.countDocuments({ author: req.user._id });
+    const [posts, total] = await Promise.all([
+      Post.find({ author: req.user._id })
+        .select('title content author category status coverImage createdAt')
+        .populate('author', 'name email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Post.countDocuments({ author: req.user._id })
+    ]);
 
     const totalPages = Math.ceil(total / limit);
 
@@ -97,7 +108,9 @@ export const getPosts = async (req, res) => {
 export const getPostById = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id)
-      .populate('author', 'name email');
+      .select('-__v')
+      .populate('author', 'name email')
+      .lean();
 
     if (!post) {
       return res.status(404).json({

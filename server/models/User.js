@@ -13,6 +13,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Email is required'],
       unique: true,
+      index: true,
       lowercase: true,
       trim: true,
       match: [
@@ -31,6 +32,9 @@ const userSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+// Ensure index and unique constraints exist from schema definition
+userSchema.index({ email: 1 }, { unique: true });
 
 const User = mongoose.model('User', userSchema);
 

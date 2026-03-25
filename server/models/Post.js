@@ -16,7 +16,8 @@ const postSchema = new mongoose.Schema(
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      required: true,
+      index: true
     },
     category: {
       type: String,
@@ -37,6 +38,13 @@ const postSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+// indexes for better filtering/sorting performance
+postSchema.index({ author: 1, createdAt: -1 });
+postSchema.index({ createdAt: -1 });
+
+// Optional search index for future text search on content/title
+postSchema.index({ title: 'text', content: 'text' });
 
 const Post = mongoose.model('Post', postSchema);
 

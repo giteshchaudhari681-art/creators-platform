@@ -5,6 +5,7 @@ import connectDB from './config/database.js';
 import userRoutes from './routes/userRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import postRoutes from './routes/postRoutes.js';
+import timingMiddleware from './middleware/timing.js';
 import errorHandler from './middleware/errorMiddleware.js';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -63,6 +64,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(timingMiddleware);
 
 // Routes
 app.use('/api/users', userRoutes);
