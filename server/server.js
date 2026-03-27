@@ -1,5 +1,6 @@
 import net from 'net';
 import app, { httpServer } from './app.js';
+import connectDB from './config/database.js';
 
 const DEFAULT_PORT = Number(process.env.PORT || 5000);
 const MAX_PORT_ATTEMPTS = Number(process.env.PORT_RETRY_LIMIT || 10);
@@ -38,6 +39,8 @@ const findAvailablePort = async (startingPort) => {
 
 const startServer = async () => {
   try {
+    await connectDB();
+
     const port = await findAvailablePort(DEFAULT_PORT);
     app.set('port', port);
 

@@ -7,95 +7,118 @@ import bcrypt from 'bcrypt';
 export const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    const normalizedEmail = email?.trim().toLowerCase();
+    const trimmedName = name?.trim();
 
-    if (!name || !email || !password) {
+    if (!trimmedName || !normalizedEmail || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields: name, email, and password'
+        message: 'Please provide all required fields: name, email, and password',
       });
     }
 
-    const existingUser = await User.findOne({ email });
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters',
+      });
+    }
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'User with this email already exists'
+        message: 'User with this email already exists',
       });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      name,
-      email,
-      password: hashedPassword
+      name: trimmedName,
+      email: normalizedEmail,
+      password: hashedPassword,
     });
 
-    user.password = undefined;
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'User registered successfully',
-      data: user
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt,
+      },
     });
-
   } catch (error) {
-    res.status(500).json({
+    if (error.name === 'ValidationError') {
+      const firstMessage = Object.values(error.errors)[0]?.message || 'Invalid user data';
+      return res.status(400).json({
+        success: false,
+        message: firstMessage,
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'User with this email already exists',
+      });
+    }
+
+    return res.status(500).json({
       success: false,
       message: 'Server error during registration',
-      error: error.message
+      error: error.message,
     });
   }
 };
 
 // @desc    Get all users
 // @route   GET /api/users
-// @access  Public
+// @access  Private
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select('-password');
-    
-    res.status(200).json({
+
+    return res.status(200).json({
       success: true,
       count: users.length,
-      data: users
+      data: users,
     });
-
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error fetching users',
-      error: error.message
+      error: error.message,
     });
   }
 };
 
 // @desc    Get single user by ID
 // @route   GET /api/users/:id
-// @access  Public
+// @access  Private
 export const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
-
     const user = await User.findById(id).select('-password');
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'User not found',
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      data: user
+      data: user,
     });
-
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error fetching user',
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -107,34 +130,43 @@ export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email } = req.body;
-
     const user = await User.findById(id);
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'User not found',
       });
     }
 
-    if (name) user.name = name;
-    if (email) user.email = email;
+    if (name) user.name = name.trim();
+    if (email) user.email = email.trim().toLowerCase();
 
     await user.save();
 
-    user.password = undefined;
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'User updated successfully',
-      data: user
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt,
+      },
     });
-
   } catch (error) {
-    res.status(500).json({
+    if (error.name === 'ValidationError') {
+      const firstMessage = Object.values(error.errors)[0]?.message || 'Invalid user update';
+      return res.status(400).json({
+        success: false,
+        message: firstMessage,
+      });
+    }
+
+    return res.status(500).json({
       success: false,
       message: 'Error updating user',
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -145,26 +177,24 @@ export const updateUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-
     const user = await User.findByIdAndDelete(id);
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'User not found',
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: 'User deleted successfully'
+      message: 'User deleted successfully',
     });
-
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error deleting user',
-      error: error.message
+      error: error.message,
     });
   }
 };

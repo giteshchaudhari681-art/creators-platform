@@ -4,15 +4,12 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
-import connectDB from './config/database.js';
 import userRoutes from './routes/userRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import postRoutes from './routes/postRoutes.js';
 import uploadRoutes from './routes/upload.js';
 import timingMiddleware from './middleware/timing.js';
 import errorHandler from './middleware/errorMiddleware.js';
-
-connectDB();
 
 const configuredClientOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')

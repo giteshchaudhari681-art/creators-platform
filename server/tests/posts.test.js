@@ -3,33 +3,35 @@ import mongoose from 'mongoose';
 import app from '../app.js';
 import User from '../models/User.js';
 import Post from '../models/Post.js';
+import connectDB from '../config/database.js';
+
+const registerTestUser = (user) => request(app).post('/api/users/register').send(user);
+const createPost = (token, payload) => request(app)
+  .post('/api/posts')
+  .set('Authorization', `Bearer ${token}`)
+  .send(payload);
 
 describe('Post Routes', () => {
   let authToken;
   let userId;
-  let postId;
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
-    await mongoose.connect(process.env.MONGODB_URI_TEST);
+    await connectDB();
 
-    // Create a test user
-    const registerRes = await request(app)
-      .post('/api/users/register')
-      .send({
-        name: 'Test Creator',
-        email: 'creator@example.com',
-        password: 'password123'
-      });
+    const registerRes = await registerTestUser({
+      name: 'Test Creator',
+      email: 'creator@example.com',
+      password: 'password123',
+    });
 
     userId = registerRes.body.data._id;
 
-    // Login to get token
     const loginRes = await request(app)
       .post('/api/auth/login')
       .send({
         email: 'creator@example.com',
-        password: 'password123'
+        password: 'password123',
       });
 
     authToken = loginRes.body.token;
@@ -44,22 +46,19 @@ describe('Post Routes', () => {
     await mongoose.connection.close();
   });
 
-  describe('POST /api/posts (Create Post)', () => {
+  describe('POST /api/posts', () => {
     test('should create a new post successfully', async () => {
-      const res = await request(app)
-        .post('/api/posts')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          title: 'My First Post',
-          description: 'This is my first post',
-          content: 'This is the detailed content of my first post. It has more than 50 characters.'
-        });
+      const res = await createPost(authToken, {
+        title: 'My First Post',
+        description: 'This is my first post',
+        content: 'This is the detailed content of my first post. It has more than 50 characters.',
+      });
 
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('success', true);
       expect(res.body.data).toHaveProperty('title', 'My First Post');
-      expect(res.body.data).toHaveProperty('creator');
-      postId = res.body.data._id;
+      expect(res.body.data).toHaveProperty('author');
+      expect(res.body.data.author.toString()).toBe(userId.toString());
     });
 
     test('should fail to create post without authentication', async () => {
@@ -68,59 +67,46 @@ describe('Post Routes', () => {
         .send({
           title: 'Unauthorized Post',
           description: 'Should fail',
-          content: 'This should not be created without authentication token'
+          content: 'This should not be created without authentication token',
         });
 
       expect(res.status).toBe(401);
     });
 
     test('should fail to create post with missing fields', async () => {
-      const res = await request(app)
-        .post('/api/posts')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          title: 'Incomplete Post'
-          // Missing description and content
-        });
+      const res = await createPost(authToken, {
+        title: 'Incomplete Post',
+      });
 
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty('message');
     });
 
     test('should fail to create post with short content', async () => {
-      const res = await request(app)
-        .post('/api/posts')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          title: 'Short Post',
-          description: 'Too short',
-          content: 'Short' // Less than 50 characters
-        });
+      const res = await createPost(authToken, {
+        title: 'Short Post',
+        description: 'Too short',
+        content: 'Short',
+      });
 
       expect(res.status).toBe(400);
+      expect(res.body.message).toContain('at least 10 characters');
     });
   });
 
-  describe('GET /api/posts (Get All Posts)', () => {
+  describe('GET /api/posts', () => {
     beforeEach(async () => {
-      // Create test posts
-      await request(app)
-        .post('/api/posts')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          title: 'Post 1',
-          description: 'Description 1',
-          content: 'This is the content of the first post with more than 50 characters for validation'
-        });
+      await createPost(authToken, {
+        title: 'Post 1',
+        description: 'Description 1',
+        content: 'This is the content of the first post with more than 50 characters for validation',
+      });
 
-      await request(app)
-        .post('/api/posts')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          title: 'Post 2',
-          description: 'Description 2',
-          content: 'This is the content of the second post with more than 50 characters for validation'
-        });
+      await createPost(authToken, {
+        title: 'Post 2',
+        description: 'Description 2',
+        content: 'This is the content of the second post with more than 50 characters for validation',
+      });
     });
 
     test('should retrieve all posts with authentication', async () => {
@@ -140,17 +126,13 @@ describe('Post Routes', () => {
     });
   });
 
-  describe('GET /api/posts/:id (Get Single Post)', () => {
+  describe('GET /api/posts/:id', () => {
     test('should retrieve a single post by ID with authentication', async () => {
-      // Create a post first
-      const createRes = await request(app)
-        .post('/api/posts')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          title: 'Single Post',
-          description: 'Test single post retrieval',
-          content: 'This is a long content string with more than 50 characters to pass validation checks'
-        });
+      const createRes = await createPost(authToken, {
+        title: 'Single Post',
+        description: 'Test single post retrieval',
+        content: 'This is a long content string with more than 50 characters to pass validation checks',
+      });
 
       const postIdToFetch = createRes.body.data._id;
 
@@ -181,28 +163,23 @@ describe('Post Routes', () => {
     });
   });
 
-  describe('PUT /api/posts/:id (Update Post)', () => {
+  describe('PUT /api/posts/:id', () => {
     test('should update post successfully', async () => {
-      // Create a post
-      const createRes = await request(app)
-        .post('/api/posts')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          title: 'Original Title',
-          description: 'Original Description',
-          content: 'This is the original content with more than 50 characters required for validation purposes'
-        });
+      const createRes = await createPost(authToken, {
+        title: 'Original Title',
+        description: 'Original Description',
+        content: 'This is the original content with more than 50 characters required for validation purposes',
+      });
 
       const postIdToUpdate = createRes.body.data._id;
 
-      // Update the post
       const updateRes = await request(app)
         .put(`/api/posts/${postIdToUpdate}`)
         .set('Authorization', `Bearer ${authToken}`)
         .send({
           title: 'Updated Title',
           description: 'Updated Description',
-          content: 'This is the updated content with more than 50 characters required for validation purposes'
+          content: 'This is the updated content with more than 50 characters required for validation purposes',
         });
 
       expect(updateRes.status).toBe(200);
@@ -216,7 +193,7 @@ describe('Post Routes', () => {
         .send({
           title: 'Unauthorized Update',
           description: 'Should fail',
-          content: 'Should not update without authentication'
+          content: 'Should not update without authentication',
         });
 
       expect(res.status).toBe(401);
@@ -230,28 +207,23 @@ describe('Post Routes', () => {
         .send({
           title: 'Non-existent Post',
           description: 'Does not exist',
-          content: 'This post does not exist so update should fail with 404 error'
+          content: 'This post does not exist so update should fail with 404 error',
         });
 
       expect(res.status).toBe(404);
     });
   });
 
-  describe('DELETE /api/posts/:id (Delete Post)', () => {
+  describe('DELETE /api/posts/:id', () => {
     test('should delete post successfully', async () => {
-      // Create a post
-      const createRes = await request(app)
-        .post('/api/posts')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          title: 'Post to Delete',
-          description: 'This post will be deleted',
-          content: 'This is the content of a post that will be deleted with more than 50 characters'
-        });
+      const createRes = await createPost(authToken, {
+        title: 'Post to Delete',
+        description: 'This post will be deleted',
+        content: 'This is the content of a post that will be deleted with more than 50 characters',
+      });
 
       const postIdToDelete = createRes.body.data._id;
 
-      // Delete the post
       const deleteRes = await request(app)
         .delete(`/api/posts/${postIdToDelete}`)
         .set('Authorization', `Bearer ${authToken}`);
@@ -259,8 +231,9 @@ describe('Post Routes', () => {
       expect(deleteRes.status).toBe(200);
       expect(deleteRes.body).toHaveProperty('message');
 
-      // Verify post is deleted
-      const getRes = await request(app).get(`/api/posts/${postIdToDelete}`);
+      const getRes = await request(app)
+        .get(`/api/posts/${postIdToDelete}`)
+        .set('Authorization', `Bearer ${authToken}`);
       expect(getRes.status).toBe(404);
     });
 
@@ -281,26 +254,22 @@ describe('Post Routes', () => {
     });
   });
 
-  describe('POST /api/posts/:id/like (Like Post)', () => {
+  describe('POST /api/posts/:id/like', () => {
     test('should like a post successfully', async () => {
-      // Create a post
-      const createRes = await request(app)
-        .post('/api/posts')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({
-          title: 'Post to Like',
-          description: 'Like this post',
-          content: 'This is a post that can be liked by authenticated users with more than 50 characters'
-        });
+      const createRes = await createPost(authToken, {
+        title: 'Post to Like',
+        description: 'Like this post',
+        content: 'This is a post that can be liked by authenticated users with more than 50 characters',
+      });
 
       const postIdToLike = createRes.body.data._id;
 
-      // Like the post
       const likeRes = await request(app)
         .post(`/api/posts/${postIdToLike}/like`)
         .set('Authorization', `Bearer ${authToken}`);
 
-      expect([200, 201]).toContain(likeRes.status);
+      expect(likeRes.status).toBe(200);
+      expect(likeRes.body.data.likeCount).toBe(1);
     });
 
     test('should fail to like post without authentication', async () => {

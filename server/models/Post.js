@@ -32,6 +32,15 @@ const postSchema = new mongoose.Schema(
     coverImage: {
       type: String,
       default: null
+    },
+    likes: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User'
+        }
+      ],
+      default: []
     }
   },
   {
