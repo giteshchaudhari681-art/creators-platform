@@ -14,6 +14,9 @@ COPY package*.json ./
 # npm ci = clean install, faster and more reliable
 RUN npm ci
 
+# Install curl for health checks
+RUN apk add --no-cache curl
+
 # Copy application source code
 # Comes after npm ci so code changes don't bust cache
 COPY . .

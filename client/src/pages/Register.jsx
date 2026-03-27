@@ -1,357 +1,207 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-
+import { toast } from 'react-toastify';
+import { Alert, Button, Card, Input } from '../components/UI';
+import { useForm } from '../hooks';
+import api from '../services/api';
+import { validateEmail, validateName, validatePassword } from '../utils/validation';
 
 const Register = () => {
-  // Form field states
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
-
-  // UI states
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
   const [apiError, setApiError] = useState('');
-
+  const [apiSuccess, setApiSuccess] = useState('');
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const { values, errors, isSubmitting, handleChange, handleSubmit: handleFormSubmit } = useForm(
+    { name: '', email: '', password: '', confirmPassword: '' },
+    async (formValues) => {
+      setApiError('');
+      setApiSuccess('');
 
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+      if (formValues.password !== formValues.confirmPassword) {
+        const mismatch = 'Passwords do not match';
+        setApiError(mismatch);
+        toast.error(mismatch);
+        throw new Error(mismatch);
+      }
 
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    } else if (formData.name.trim().length > 50) {
-      newErrors.name = 'Name cannot exceed 50 characters';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    setErrors(newErrors);
-
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    setSuccessMessage('');
-    setApiError('');
-
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const registrationData = {
-        name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        password: formData.password
-      };
-
-      const response = await fetch('/api/users/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(registrationData)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccessMessage('Account created successfully! Redirecting to login...');
-
-        setFormData({
-          name: '',
-          email: '',
-          password: '',
-          confirmPassword: ''
+      try {
+        const response = await api.post('/api/auth/register', {
+          name: formValues.name.trim(),
+          email: formValues.email.trim().toLowerCase(),
+          password: formValues.password,
         });
+        
+        if (!response.data.success) {
+          throw new Error(response.data.message || 'Registration failed. Please try again.');
+        }
+
+        setApiSuccess('Account created successfully! Redirecting to login...');
+        toast.success('Registration successful');
 
         setTimeout(() => {
           navigate('/login');
-        }, 2000);
-
-      } else {
-        setApiError(data.message || 'Registration failed. Please try again.');
+        }, 1600);
+      } catch (error) {
+        const message = error.message || 'Unable to connect to server. Please check your connection and try again.';
+        setApiError(message);
+        toast.error(message);
+        throw error;
       }
-
-    } catch (error) {
-      console.error('Registration error:', error);
-      setApiError('Unable to connect to server. Please check your connection and try again.');
-    } finally {
-      setIsLoading(false);
+    },
+    {
+      name: validateName,
+      email: validateEmail,
+      password: validatePassword,
     }
+  );
+
+  const handleFormChange = (event) => {
+    handleChange(event);
+    if (apiError) setApiError('');
+    if (apiSuccess) setApiSuccess('');
+  };
+
+  const onSubmit = async (event) => {
+    event.preventDefault();
+    await handleFormSubmit(event);
   };
 
   return (
-    <div style={containerStyle}>
-      <div style={formContainerStyle}>
-        <h1 style={titleStyle}>Create Your Account</h1>
-        <p style={subtitleStyle}>
-          Join Your Platform Name and start creating today
-        </p>
+    <section className="auth-page">
+      <div className="shell-container auth-grid">
+        <div className="auth-showcase auth-showcase--warm">
+          <span className="eyebrow">Build Your Presence</span>
+          <h1>Create a creator workspace that feels more like a product than a starter template.</h1>
+          <p>
+            Sign up to write, preview, publish, and manage content inside a sharper interface with stronger UX defaults.
+          </p>
 
-        {successMessage && (
-          <div style={successStyle}>
-            {successMessage}
+          <div className="auth-showcase__metrics">
+            <div>
+              <strong>Publish Faster</strong>
+              <span>Move from idea to post with less friction</span>
+            </div>
+            <div>
+              <strong>Look Better</strong>
+              <span>Stronger layout, rhythm, and interaction design</span>
+            </div>
           </div>
-        )}
 
-        {apiError && (
-          <div style={errorMessageStyle}>
-            {apiError}
+          <div className="auth-showcase__list">
+            <div>
+              <strong>Publishing workspace</strong>
+              <span>Draft, review, and release content with better structure.</span>
+            </div>
+            <div>
+              <strong>Dashboard visibility</strong>
+              <span>Track categories, draft volume, and recent post activity.</span>
+            </div>
+            <div>
+              <strong>Interactive editor flow</strong>
+              <span>Use cover previews, live reading stats, and cleaner forms.</span>
+            </div>
           </div>
-        )}
+        </div>
 
-        <form onSubmit={handleSubmit} style={formStyle}>
+        <Card className="auth-card">
+          <div className="auth-card__head">
+            <span className="eyebrow">Create Account</span>
+            <h2>Join CreatorHub</h2>
+            <p>Set up your account and move directly into the upgraded content workspace.</p>
+          </div>
 
-          <div style={fieldStyle}>
-            <label htmlFor="name" style={labelStyle}>
-              Name *
-            </label>
-            <input
-              type="text"
-              id="name"
+          {apiSuccess && (
+            <Alert variant="success" title="Success">
+              {apiSuccess}
+            </Alert>
+          )}
+
+          {apiError && (
+            <Alert variant="error" title="Registration Failed">
+              {apiError}
+            </Alert>
+          )}
+
+          <form onSubmit={onSubmit} className="space-y-4 auth-form">
+            <Input
+              label="Full Name"
               name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Enter your full name"
-              style={errors.name ? inputErrorStyle : inputStyle}
-              disabled={isLoading}
+              type="text"
+              value={values.name}
+              onChange={handleFormChange}
+              placeholder="John Doe"
+              helperText="This is shown in your dashboard greeting."
+              error={errors.name}
+              disabled={isSubmitting}
+              required
+              inputClassName="auth-input"
             />
-            {errors.name && (
-              <span style={errorTextStyle}>{errors.name}</span>
-            )}
-          </div>
 
-          <div style={fieldStyle}>
-            <label htmlFor="email" style={labelStyle}>
-              Email *
-            </label>
-            <input
-              type="email"
-              id="email"
+            <Input
+              label="Email Address"
               name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Enter your email"
-              style={errors.email ? inputErrorStyle : inputStyle}
-              disabled={isLoading}
+              type="email"
+              value={values.email}
+              onChange={handleFormChange}
+              placeholder="you@example.com"
+              helperText="Use a real email if you plan to keep this account."
+              error={errors.email}
+              disabled={isSubmitting}
+              required
+              inputClassName="auth-input"
             />
-            {errors.email && (
-              <span style={errorTextStyle}>{errors.email}</span>
-            )}
-          </div>
 
-          <div style={fieldStyle}>
-            <label htmlFor="password" style={labelStyle}>
-              Password *
-            </label>
-            <input
-              type="password"
-              id="password"
+            <Input
+              label="Password"
               name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Create a password (min 6 characters)"
-              style={errors.password ? inputErrorStyle : inputStyle}
-              disabled={isLoading}
-            />
-            {errors.password && (
-              <span style={errorTextStyle}>{errors.password}</span>
-            )}
-          </div>
-
-          <div style={fieldStyle}>
-            <label htmlFor="confirmPassword" style={labelStyle}>
-              Confirm Password *
-            </label>
-            <input
               type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Re-enter your password"
-              style={errors.confirmPassword ? inputErrorStyle : inputStyle}
-              disabled={isLoading}
+              value={values.password}
+              onChange={handleFormChange}
+              placeholder="Minimum 6 characters"
+              helperText="Choose a password you will remember."
+              error={errors.password}
+              disabled={isSubmitting}
+              required
+              inputClassName="auth-input"
             />
-            {errors.confirmPassword && (
-              <span style={errorTextStyle}>{errors.confirmPassword}</span>
-            )}
+
+            <Input
+              label="Confirm Password"
+              name="confirmPassword"
+              type="password"
+              value={values.confirmPassword}
+              onChange={handleFormChange}
+              placeholder="Re-enter your password"
+              helperText="Repeat the same password exactly."
+              error={errors.confirmPassword}
+              disabled={isSubmitting}
+              required
+              inputClassName="auth-input"
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full auth-submit"
+              loading={isSubmitting}
+              loadingLabel="Creating Account..."
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Creating Account...' : 'Create Creator Account'}
+            </Button>
+          </form>
+
+          <div className="auth-card__footer">
+            <p>
+              Already registered?{' '}
+              <Link to="/login">Log in here</Link>
+            </p>
           </div>
-
-          <button
-            type="submit"
-            style={isLoading ? buttonDisabledStyle : buttonStyle}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Creating Account...' : 'Sign Up'}
-          </button>
-        </form>
-
-        <p style={linkTextStyle}>
-          Already have an account?{' '}
-          <Link to="/login" style={linkStyle}>
-            Login here
-          </Link>
-        </p>
+        </Card>
       </div>
-    </div>
+    </section>
   );
-};
-
-const containerStyle = {
-  minHeight: '80vh',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  padding: '2rem',
-  backgroundColor: '#f8f9fa',
-};
-
-const formContainerStyle = {
-  maxWidth: '450px',
-  width: '100%',
-  padding: '2.5rem',
-  backgroundColor: 'white',
-  borderRadius: '10px',
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-};
-
-const titleStyle = {
-  textAlign: 'center',
-  marginBottom: '0.5rem',
-  color: '#333',
-  fontSize: '2rem',
-};
-
-const subtitleStyle = {
-  textAlign: 'center',
-  color: '#666',
-  marginBottom: '2rem',
-  fontSize: '0.95rem',
-};
-
-const formStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.5rem',
-};
-
-const fieldStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-};
-
-const labelStyle = {
-  marginBottom: '0.5rem',
-  fontWeight: '500',
-  color: '#333',
-  fontSize: '0.9rem',
-};
-
-const inputStyle = {
-  padding: '0.75rem',
-  fontSize: '1rem',
-  border: '1px solid #ddd',
-  borderRadius: '5px',
-};
-
-const inputErrorStyle = {
-  ...inputStyle,
-  borderColor: '#dc3545',
-};
-
-const errorTextStyle = {
-  color: '#dc3545',
-  fontSize: '0.85rem',
-  marginTop: '0.25rem',
-};
-
-const buttonStyle = {
-  padding: '0.875rem',
-  fontSize: '1rem',
-  fontWeight: 'bold',
-  color: 'white',
-  backgroundColor: '#007bff',
-  border: 'none',
-  borderRadius: '5px',
-  cursor: 'pointer',
-};
-
-const buttonDisabledStyle = {
-  ...buttonStyle,
-  backgroundColor: '#6c757d',
-  cursor: 'not-allowed',
-};
-
-const successStyle = {
-  padding: '1rem',
-  backgroundColor: '#d4edda',
-  color: '#155724',
-  borderRadius: '5px',
-  marginBottom: '1rem',
-};
-
-const errorMessageStyle = {
-  padding: '1rem',
-  backgroundColor: '#f8d7da',
-  color: '#721c24',
-  borderRadius: '5px',
-  marginBottom: '1rem',
-};
-
-const linkTextStyle = {
-  textAlign: 'center',
-  marginTop: '1.5rem',
-};
-
-const linkStyle = {
-  color: '#007bff',
-  textDecoration: 'none',
-  fontWeight: '500',
 };
 
 export default Register;

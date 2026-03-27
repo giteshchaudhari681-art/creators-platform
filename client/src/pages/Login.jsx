@@ -1,285 +1,171 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { Alert, Button, Card, Input } from '../components/UI';
+import { useAuth } from '../context/useAuth';
+import { useForm } from '../hooks';
+import api from '../services/api';
+import { validateEmail, validatePassword } from '../utils/validation';
 
 const Login = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState('');
-
+  const [apiSuccess, setApiSuccess] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-    
-    if (apiError) {
+  const { values, errors, isSubmitting, handleChange, handleSubmit: handleFormSubmit } = useForm(
+    { email: '', password: '' },
+    async (formValues) => {
       setApiError('');
-    }
-  };
+      setApiSuccess('');
 
-  const validateForm = () => {
-    const newErrors = {};
+      try {
+        const response = await api.post('/api/auth/login', {
+          email: formValues.email.trim().toLowerCase(),
+          password: formValues.password,
+        });
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
-    }
+        setApiSuccess('Login successful! Redirecting...');
+        toast.success('Login successful');
+        login(response.data.user, response.data.token);
 
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    setApiError('');
-
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const response = await api.post('/api/auth/login', {
-        email: formData.email.trim().toLowerCase(),
-        password: formData.password
-      });
-      
-      const data = response.data;
-
-      if (response.status === 200) {
-        
-        toast.success('Login successful!');
-
-        login(data.user, data.token);
-        
-        setFormData({ email: '', password: '' });
-        
-        const from = location.state?.from?.pathname || '/dashboard';
-        navigate(from, { replace: true });
-
-      } else {
-        setApiError(data.message || 'Login failed. Please try again.');
+        setTimeout(() => {
+          const from = location.state?.from?.pathname || '/dashboard';
+          navigate(from, { replace: true });
+        }, 500);
+      } catch (error) {
+        const message = error.response?.data?.message || 'Unable to connect to the server. Please try again.';
+        setApiError(message);
+        toast.error(message);
+        throw error;
       }
-
-    } catch (error) {
-      const message =
-        error.response?.data?.message ||
-        'Unable to connect to the server. Please try again.';
-      toast.error(message);
-      setApiError(message);
-    } finally {
-      setIsLoading(false);
+    },
+    {
+      email: validateEmail,
+      password: validatePassword,
     }
+  );
+
+  const handleFormChange = (event) => {
+    handleChange(event);
+    if (apiError) setApiError('');
+    if (apiSuccess) setApiSuccess('');
+  };
+
+  const onSubmit = async (event) => {
+    event.preventDefault();
+    await handleFormSubmit(event);
   };
 
   return (
-    <div style={containerStyle}>
-      <div style={formContainerStyle}>
-        <h1 style={titleStyle}>Welcome Back</h1>
-        <p style={subtitleStyle}>
-          Login to your account
-        </p>
+    <section className="auth-page">
+      <div className="shell-container auth-grid">
+        <div className="auth-showcase">
+          <span className="eyebrow">Return To Workspace</span>
+          <h1>Log in and pick up your publishing flow where you left it.</h1>
+          <p>
+            Access your creator dashboard, continue drafts, and manage post performance from a cleaner interface.
+          </p>
 
-        {apiError && (
-          <div style={errorMessageStyle}>
-            {apiError}
+          <div className="auth-showcase__metrics">
+            <div>
+              <strong>Dashboard</strong>
+              <span>Filters, insights, and post control</span>
+            </div>
+            <div>
+              <strong>Editor</strong>
+              <span>Live preview and sharper publishing flow</span>
+            </div>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} style={formStyle}>
-          
-          <div style={fieldStyle}>
-            <label htmlFor="email" style={labelStyle}>
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
+          <div className="auth-showcase__list">
+            <div>
+              <strong>Focused workflow</strong>
+              <span>Clear hierarchy and faster next actions after sign-in.</span>
+            </div>
+            <div>
+              <strong>Live content control</strong>
+              <span>Move from edits to publishing without losing context.</span>
+            </div>
+            <div>
+              <strong>Better workspace signal</strong>
+              <span>Stats, filters, previews, and improved navigation.</span>
+            </div>
+          </div>
+        </div>
+
+        <Card className="auth-card">
+          <div className="auth-card__head">
+            <span className="eyebrow">Sign In</span>
+            <h2>Welcome back</h2>
+            <p>Use your account credentials to enter the creator workspace.</p>
+          </div>
+
+          {apiError && (
+            <Alert variant="error" title="Login Failed">
+              {apiError}
+            </Alert>
+          )}
+
+          {apiSuccess && (
+            <Alert variant="success" title="Success">
+              {apiSuccess}
+            </Alert>
+          )}
+
+          <form onSubmit={onSubmit} className="space-y-4 auth-form">
+            <Input
+              label="Email Address"
               name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Enter your email"
-              style={errors.email ? inputErrorStyle : inputStyle}
-              disabled={isLoading}
-              autoComplete="email"
+              type="email"
+              value={values.email}
+              onChange={handleFormChange}
+              placeholder="you@example.com"
+              helperText="Use the same email you registered with."
+              error={errors.email}
+              disabled={isSubmitting}
+              required
+              inputClassName="auth-input"
             />
-            {errors.email && (
-              <span style={errorTextStyle}>{errors.email}</span>
-            )}
-          </div>
 
-          <div style={fieldStyle}>
-            <label htmlFor="password" style={labelStyle}>
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
+            <Input
+              label="Password"
               name="password"
-              value={formData.password}
-              onChange={handleChange}
+              type="password"
+              value={values.password}
+              onChange={handleFormChange}
               placeholder="Enter your password"
-              style={errors.password ? inputErrorStyle : inputStyle}
-              disabled={isLoading}
-              autoComplete="current-password"
+              helperText="Passwords are stored securely and cannot be recovered from the UI."
+              error={errors.password}
+              disabled={isSubmitting}
+              required
+              inputClassName="auth-input"
             />
-            {errors.password && (
-              <span style={errorTextStyle}>{errors.password}</span>
-            )}
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full auth-submit"
+              loading={isSubmitting}
+              loadingLabel="Signing In..."
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Logging in...' : 'Enter CreatorHub'}
+            </Button>
+          </form>
+
+          <div className="auth-card__footer">
+            <p>
+              No account yet?{' '}
+              <Link to="/register">Create one now</Link>
+            </p>
           </div>
-
-          <button 
-            type="submit" 
-            style={isLoading ? buttonDisabledStyle : buttonStyle}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <p style={linkTextStyle}>
-          Don't have an account?{' '}
-          <Link to="/register" style={linkStyle}>
-            Sign up here
-          </Link>
-        </p>
+        </Card>
       </div>
-    </div>
+    </section>
   );
-};
-
-const containerStyle = {
-  minHeight: '80vh',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  padding: '2rem',
-  backgroundColor: '#f8f9fa',
-};
-
-const formContainerStyle = {
-  maxWidth: '400px',
-  width: '100%',
-  padding: '2.5rem',
-  backgroundColor: 'white',
-  borderRadius: '10px',
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-};
-
-const titleStyle = {
-  textAlign: 'center',
-  marginBottom: '0.5rem',
-  color: '#333',
-  fontSize: '2rem',
-};
-
-const subtitleStyle = {
-  textAlign: 'center',
-  color: '#666',
-  marginBottom: '2rem',
-  fontSize: '0.95rem',
-};
-
-const formStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.5rem',
-};
-
-const fieldStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-};
-
-const labelStyle = {
-  marginBottom: '0.5rem',
-  fontWeight: '500',
-  color: '#333',
-  fontSize: '0.9rem',
-};
-
-const inputStyle = {
-  padding: '0.75rem',
-  fontSize: '1rem',
-  border: '1px solid #ddd',
-  borderRadius: '5px',
-};
-
-const inputErrorStyle = {
-  ...inputStyle,
-  borderColor: '#dc3545',
-};
-
-const errorTextStyle = {
-  color: '#dc3545',
-  fontSize: '0.85rem',
-  marginTop: '0.25rem',
-};
-
-const buttonStyle = {
-  padding: '0.875rem',
-  fontSize: '1rem',
-  fontWeight: 'bold',
-  color: 'white',
-  backgroundColor: '#007bff',
-  border: 'none',
-  borderRadius: '5px',
-  cursor: 'pointer',
-  marginTop: '0.5rem',
-};
-
-const buttonDisabledStyle = {
-  ...buttonStyle,
-  backgroundColor: '#6c757d',
-  cursor: 'not-allowed',
-};
-
-const errorMessageStyle = {
-  padding: '1rem',
-  backgroundColor: '#f8d7da',
-  color: '#721c24',
-  borderRadius: '5px',
-  marginBottom: '1rem',
-};
-
-const linkTextStyle = {
-  textAlign: 'center',
-  marginTop: '1.5rem',
-  color: '#666',
-};
-
-const linkStyle = {
-  color: '#007bff',
-  textDecoration: 'none',
-  fontWeight: '500',
 };
 
 export default Login;

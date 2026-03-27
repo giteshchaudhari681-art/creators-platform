@@ -1,4 +1,6 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
@@ -10,21 +12,18 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import PublicRoute from './components/common/PublicRoute';
 import CreatePost from './pages/CreatePost';
 import EditPost from './pages/EditPost';
-import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-
         <Toaster position="top-right" />
-        
-        <div style={appStyle}>
+
+        <div className="app-shell">
           <Header />
 
-          <main style={mainStyle}>
+          <main className="app-main">
             <Routes>
               <Route path="/" element={<Home />} />
               <Route
@@ -73,10 +72,7 @@ function App() {
 
           <Footer />
 
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-          />
+          <ToastContainer position="top-right" autoClose={3000} />
         </div>
       </AuthProvider>
     </BrowserRouter>
@@ -85,21 +81,26 @@ function App() {
 
 const NotFound = () => {
   return (
-    <div style={{ textAlign: 'center', padding: '4rem' }}>
-      <h1>404 - Page Not Found</h1>
-      <p>The page you're looking for doesn't exist.</p>
-    </div>
+    <section className="page-section">
+      <div className="shell-container">
+        <div className="hero-card mx-auto max-w-3xl text-center">
+          <span className="eyebrow">Missing Route</span>
+          <h1>404</h1>
+          <p className="hero-copy">
+            The page you requested is not part of the current creator workflow.
+          </p>
+          <div className="hero-actions justify-center">
+            <Link to="/" className="btn btn-primary px-6 py-3">
+              Return Home
+            </Link>
+            <Link to="/dashboard" className="btn btn-outline px-6 py-3">
+              Open Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
   );
-};
-
-const appStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  minHeight: '100vh',
-};
-
-const mainStyle = {
-  flex: 1,
 };
 
 export default App;

@@ -1,88 +1,55 @@
-import './config/env.js';
-import express from 'express';
-import cors from 'cors';
-import connectDB from './config/database.js';
-import userRoutes from './routes/userRoutes.js';
-import authRoutes from './routes/authRoutes.js';
-import postRoutes from './routes/postRoutes.js';
-import timingMiddleware from './middleware/timing.js';
-import errorHandler from './middleware/errorMiddleware.js';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
-import uploadRoutes from './routes/upload.js';
+import net from 'net';
+import app, { httpServer } from './app.js';
 
+const DEFAULT_PORT = Number(process.env.PORT || 5000);
+const MAX_PORT_ATTEMPTS = Number(process.env.PORT_RETRY_LIMIT || 10);
 
-connectDB();
+const isPortAvailable = (port) => new Promise((resolve) => {
+  const tester = net.createServer();
 
-const app = express();
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
-});
-
-io.use((socket, next) => {
-  const token = socket.handshake.auth?.token;
-
-  console.log('--- SOCKET DEBUG START ---');
-  console.log('TOKEN:', token);
-
-  if (!token) {
-    console.log('❌ NO TOKEN RECEIVED');
-    return next(new Error('No token'));
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    console.log('✅ DECODED TOKEN:', decoded);
-
-    socket.data.user = decoded;
-
-    next();
-  } catch (error) {
-    console.log('❌ JWT ERROR:', error.message);
-    next(new Error('Auth error'));
-  }
-});
-
-io.on('connection', (socket) => {
-  console.log(
-    `✅ User connected: ${socket.id} | User: ${socket.data.user?.email}`
-  );
-});
-
-const PORT = process.env.PORT || 5000;
-
-// Middleware
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
-}));
-app.use(express.json());
-app.use(timingMiddleware);
-
-// Routes
-app.use('/api/users', userRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/posts', postRoutes(io));
-app.use('/api/upload', uploadRoutes);
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    message: 'Server is running!',
-    timestamp: new Date()
+  tester.once('error', (error) => {
+    resolve(error.code !== 'EADDRINUSE');
   });
+
+  tester.once('listening', () => {
+    tester.close(() => resolve(true));
+  });
+
+  tester.listen(port);
 });
 
-app.use(errorHandler);
+const findAvailablePort = async (startingPort) => {
+  for (let offset = 0; offset <= MAX_PORT_ATTEMPTS; offset += 1) {
+    const candidatePort = startingPort + offset;
+    const available = await isPortAvailable(candidatePort);
 
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`🔌 Socket.io ready for connections`);
-});
+    if (available) {
+      if (candidatePort !== startingPort) {
+        console.warn(`Port ${startingPort} is busy. Using port ${candidatePort} instead.`);
+      }
+      return candidatePort;
+    }
+  }
+
+  throw new Error(
+    `Unable to find an open port between ${startingPort} and ${startingPort + MAX_PORT_ATTEMPTS}.`
+  );
+};
+
+const startServer = async () => {
+  try {
+    const port = await findAvailablePort(DEFAULT_PORT);
+    app.set('port', port);
+
+    httpServer.listen(port, () => {
+      console.log(`Server running on http://localhost:${port}`);
+      console.log('Socket.io ready for connections');
+    });
+  } catch (error) {
+    console.error(error.message);
+    console.error('Stop the existing process or set a different PORT in server/.env.');
+    process.exit(1);
+  }
+};
+
+startServer();

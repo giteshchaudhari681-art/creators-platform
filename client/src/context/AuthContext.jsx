@@ -1,53 +1,43 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from './authContextObject';
 
-const AuthContext = createContext(null);
+const readStoredAuth = () => {
+  const storedToken = localStorage.getItem('token');
+  const storedUser = localStorage.getItem('user');
+
+  if (!storedToken || !storedUser) {
+    return { user: null, token: null };
+  }
+
+  try {
+    return {
+      token: storedToken,
+      user: JSON.parse(storedUser),
+    };
+  } catch (error) {
+    console.error('Error parsing user data:', error);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    return { user: null, token: null };
+  }
+};
 
 export const AuthProvider = ({ children }) => {
-
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [authState, setAuthState] = useState(readStoredAuth);
 
   const navigate = useNavigate();
-
-  useEffect(() => {
-
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (storedToken && storedUser) {
-      try {
-
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-
-      } catch (error) {
-
-        console.error('Error parsing user data:', error);
-
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
-    }
-
-    setLoading(false);
-
-  }, []);
+  const { user, token } = authState;
 
   const login = (userData, userToken) => {
-
-    setUser(userData);
-    setToken(userToken);
+    setAuthState({ user: userData, token: userToken });
 
     localStorage.setItem('token', userToken);
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const logout = () => {
-
-    setUser(null);
-    setToken(null);
+    setAuthState({ user: null, token: null });
 
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -63,10 +53,10 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     token,
-    loading,
+    loading: false,
     login,
     logout,
-    isAuthenticated
+    isAuthenticated,
   };
 
   return (
@@ -74,15 +64,4 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-
-  return context;
 };

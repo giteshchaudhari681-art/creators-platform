@@ -1,63 +1,39 @@
 import axios from 'axios';
+import { resolveApiOrigin } from './backend';
 
-// Create axios instance with base configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
-  timeout: 10000
+  timeout: 10000,
 });
 
-// Optionally apply JSON content type only when not FormData
-api.interceptors.request.use((config) => {
-  if (config.data && !(config.data instanceof FormData)) {
-    config.headers['Content-Type'] = 'application/json';
+api.interceptors.request.use(async (config) => {
+  const resolvedOrigin = await resolveApiOrigin();
+  const nextConfig = { ...config };
+
+  nextConfig.baseURL = resolvedOrigin;
+
+  if (nextConfig.data && !(nextConfig.data instanceof FormData)) {
+    nextConfig.headers['Content-Type'] = 'application/json';
   } else {
-    delete config.headers['Content-Type'];
+    delete nextConfig.headers['Content-Type'];
   }
-  return config;
+
+  const token = localStorage.getItem('token');
+  if (token) {
+    nextConfig.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return nextConfig;
 }, (error) => Promise.reject(error));
 
-// Request interceptor
-api.interceptors.request.use(
-  (config) => {
-    // Get token from localStorage
-    const token = localStorage.getItem('token');
-
-    // If token exists, add to headers
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // Return modified config
-    return config;
-  },
-  (error) => {
-    // Handle request error
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor
 api.interceptors.response.use(
-  (response) => {
-    // If response is successful, return it
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // Check if error is 401 Unauthorized
-    if (error.response && error.response.status === 401) {
-      // Token is invalid or expired
-
-      // Clear localStorage
+    if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-
-      // Redirect to login
       window.location.href = '/login';
-
-      console.log('Session expired. Please login again.');
     }
 
-    // Return error to component
     return Promise.reject(error);
   }
 );
