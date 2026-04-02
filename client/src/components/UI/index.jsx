@@ -54,19 +54,23 @@ export const Input = ({
   error,
   helperText,
   required = false,
+  id,
   inputClassName = '',
   className = '',
   ...props
 }) => {
+  const inputId = id || props.name;
+
   return (
     <div className={`form-field ${className}`}>
       {label && (
-        <label className="form-field__label">
+        <label className="form-field__label" htmlFor={inputId}>
           {label}
           {required && <span className="text-red-500"> *</span>}
         </label>
       )}
       <input
+        id={inputId}
         className={`input-field ${error ? 'input-field--error' : ''} ${inputClassName}`}
         {...props}
       />
@@ -83,20 +87,24 @@ export const Textarea = ({
   helperText,
   required = false,
   rows = 4,
+  id,
   inputClassName = '',
   className = '',
   ...props
 }) => {
+  const textareaId = id || props.name;
+
   return (
     <div className={`form-field ${className}`}>
       {label && (
-        <label className="form-field__label">
+        <label className="form-field__label" htmlFor={textareaId}>
           {label}
           {required && <span className="text-red-500"> *</span>}
         </label>
       )}
       <textarea
         rows={rows}
+        id={textareaId}
         className={`input-field ${error ? 'input-field--error' : ''} ${inputClassName}`}
         {...props}
       />
