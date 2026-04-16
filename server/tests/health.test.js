@@ -13,7 +13,7 @@ const run = async () => {
     assert.equal(response.status, 200);
     assert.deepEqual(body, {
       status: 'ok',
-      message: 'Broken health message'
+      message: 'Server is running'
     });
 
     console.log('Health check test passed');
